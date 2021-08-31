@@ -2,8 +2,46 @@
 <html lang="en">
   <head>
     <script type="module" src="./advanced-selecting.js"></script>
+    <style>
+      [data-advanced-selecting-hover] {
+        border: 2px solid red;
+      }
+    </style>
   </head>
   <body>
-    <advanced-selecting name="World"></advanced-selecting>
+    <ul>
+      Anchoring text
+      <li>
+        <div>Item 1</div>
+      </li>
+      <li>
+        <span>label2</span>
+        <div>Item 2</div>
+      </li>
+      <li>
+        <div><span>label3</span></div>
+        <div>Item 3</div>
+      </li>
+      <li>
+        <div>Item 4</div>
+      </li>
+    </ul>
+
+    <ul>
+      href selector
+      <li>
+        <a href="#item1">Item 1</a>
+      </li>
+      <li>
+        <a href="#item2">Item 2</a>
+      </li>
+      <li>
+        <a href="#item3">Item 3</a>
+      </li>
+      <li>
+        <a href="#item4">Item 4</a>
+      </li>
+    </ul>
+    <advanced-selecting header="Advanced selector"></advanced-selecting>
   </body>
 </html>
