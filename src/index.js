@@ -128,13 +128,20 @@ export class AdvancedSelecting extends LitElement {
     this.requestUpdate();
   }
 
-  relativeElementsTemplate(parent) {
-    return html`<span data-action="getElement" data-type="main">${parent.tagName}</span>
+  _renderNode(element, type = "main") {
+    return html`
+    <span data-action="getElement" data-type="${type}">${element.tagName}</span>
+    `;
+  }
+
+  _renderRelativeBranch(parent) {
+    return html`
+    ${this._renderNode(parent, "main")}
     <ul>
       ${this.relativeTreeElements.slice(1).map((element) => 
         html`
           <li>
-            <span data-action="getElement" data-type="relative">${element.tagName}</span>
+            ${this._renderNode(element, "relative")}
           </li>
         `
         )}
@@ -142,11 +149,11 @@ export class AdvancedSelecting extends LitElement {
     `;
   }
 
-  mainElementsTemplate() {
+  _renderVisualTree() {
     return this.treeElements.map((element) =>
       html`
         <li>
-          ${element === this.relativeTreeElements[0] ? this.relativeElementsTemplate(element) : html`<span data-action="getElement" data-type="main">${element.tagName}</span>`}
+          ${element === this.relativeTreeElements[0] ? this._renderRelativeBranch(element) : this._renderNode(element, "main")}
         </li>
       `
     );
@@ -158,7 +165,7 @@ export class AdvancedSelecting extends LitElement {
       <button @click="${this.startPicking}" data-pick-type="main">Pick element</button>
       <button @click="${this.startPicking}" data-pick-type="relative">Pick relative element</button>
       <ul id="mainVisualTree">
-        ${this.mainElementsTemplate()}
+        ${this._renderVisualTree()}
       </ul>
       <span id="query"></span>
     `;
