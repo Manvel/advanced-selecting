@@ -1,0 +1,33 @@
+{
+  "name": "advanced-selecting",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run clean && webpack --config webpack.config.js",
+    "start": "npm run build -- --watch & npm run server",
+    "server": "http-server -p 3000 dist",
+    "clean": "rm -r dist || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Manvel/advanced-selecting.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Manvel/advanced-selecting/issues"
+  },
+  "homepage": "https://github.com/Manvel/advanced-selecting#readme",
+  "dependencies": {
+    "lit": "^2.0.0-rc.3"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^9.0.1",
+    "http-server": "^13.0.1",
+    "minimist": "^1.2.5",
+    "webpack": "^5.51.1",
+    "webpack-cli": "^4.8.0"
+  }
+}
