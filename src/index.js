@@ -8,7 +8,7 @@ export class AdvancedSelecting extends LitElement {
         margin: 5px;
         max-width: 300px;
       }
-      [data-action="getElement"] {
+      [data-action-hover="getElement"] {
         display: inline-block;
         border: 1px solid grey;
       }
@@ -62,27 +62,45 @@ export class AdvancedSelecting extends LitElement {
   firstUpdated() {
     this.mainVisualTree = this.renderRoot.querySelector("#mainVisualTree");
     const highlightTarget = (target, clearHighlight) => {
-      const action = target.dataset.action;
       const type = target.dataset.type;
-      if (action === "getElement") {
-        const index = target.dataset.index;
-        const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
-        if (clearHighlight) delete tree[index].element.dataset.advancedSelectingHover;
-        else tree[index].element.dataset.advancedSelectingHover = true;
-      }
+      const index = target.dataset.index;
+      const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
+      if (clearHighlight) delete tree[index].element.dataset.advancedSelectingHover;
+      else tree[index].element.dataset.advancedSelectingHover = true;
     };
 
     this.mainVisualTree.addEventListener("mouseover", ({target}) =>
     {
-      const actionElement = this._findClosestElement(target, ({dataset}) => dataset && dataset.action);
+      const actionElement = this._findClosestElement(target, ({dataset}) => dataset && dataset.actionHover);
       if (actionElement)
         highlightTarget(actionElement);
     });
     this.mainVisualTree.addEventListener("mouseout", ({target}) =>
     {
-      const actionElement = this._findClosestElement(target, ({dataset}) => dataset && dataset.action);
+      const actionElement = this._findClosestElement(target, ({dataset}) => dataset && dataset.actionHover);
       if (actionElement)
         highlightTarget(actionElement, true);
+    });
+
+    this.mainVisualTree.addEventListener("click", (event) => {
+      const actionElement = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.actionClick);
+      if (actionElement) {
+        const action = actionElement.dataset.actionClick;
+
+        if (action === "toggleClass") {
+          const container = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.index);
+          if (!container) return;
+
+          const {index, type} = container.dataset;
+          const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
+          if (actionElement.checked) {
+            tree[index].includeClasses.push(actionElement.dataset.value);
+          } else {
+            tree[index].includeClasses = tree[index].includeClasses.filter((className) => className !== actionElement.dataset.value);
+          }
+          this.requestUpdate();
+        }
+      }
     });
   }
 
@@ -159,40 +177,45 @@ export class AdvancedSelecting extends LitElement {
     this.requestUpdate();
   }
 
-  _renderClasses(classlist) {
+  _renderId(id, includeID) {
+    return`<div>ID: <label>${id}<input data-action-click="toggleId" type="checkbox" ${includeID ? "checked" : ""}</label></div>`;
+  }
+
+  _renderClasses(classlist, classesToInclude) {
     return html`<div>Classes: ${Array.from(classlist).map((className) => 
       html`
-        <label>${className}<input type="checkbox"></label>
+        <label>${className}<input data-action-click="toggleClass" type="checkbox" data-value="${className}"></label>
       `)}</div>
     `;
   }
 
-  _renderNode(element, type = "main", index) {
+  _renderNode({element, includeClasses, includeID}, type = "main", index) {
     return html`
     <ul>
-      <li data-action="getElement" data-type="${type}" data-index=${index}>
+      <li data-action-hover="getElement" data-type="${type}" data-index=${index}>
         <span>Tagname: ${element.tagName}</span>
-        ${element.classList.length ? this._renderClasses(element.classList): ""}
+        ${element.classList.length ? this._renderClasses(element.classList, includeClasses): ""}
+        ${element.id ? this._renderId(element.id, includeID) : ""}
       </li>
     </ul>
     `;
   }
 
   generateQuery() {
-    return this.treeElements.reduce((acc, {element}) => {
+    return this.treeElements.reduce((acc, {element, includeClasses}) => {
       if (!acc) return element.tagName;
-      return `${acc} > ${element.tagName}`
+      return `${acc} > ${element.tagName}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
     }, "");
   }
 
-  _renderRelativeBranch(parent, index) {
+  _renderRelativeBranch(parentDataElem, index) {
     return html`
-    ${this._renderNode(parent, "main", index)}
+    ${this._renderNode(parentDataElem, "main", index)}
     <ul id="relativeVisualTree">
-      ${this.relativeTreeElements.slice(1).map(({element}, relativeIndex) => 
+      ${this.relativeTreeElements.slice(1).map((dataElem, relativeIndex) => 
         html`
           <li>
-            ${this._renderNode(element, "relative", relativeIndex)}
+            ${this._renderNode(dataElem, "relative", relativeIndex)}
           </li>
         `
         )}
@@ -201,10 +224,10 @@ export class AdvancedSelecting extends LitElement {
   }
 
   _renderVisualTree() {
-    return this.treeElements.map(({element}, index) =>
+    return this.treeElements.map((dataElem, index) =>
       html`
-        <li class="${this.relativeTreeElements[0] && element.contains(this.relativeTreeElements[0].element) ? "commonParent" : ""}">
-          ${this.relativeTreeElements[0] && element === this.relativeTreeElements[0].element ? this._renderRelativeBranch(element, index) : this._renderNode(element, "main", index)}
+        <li class="${this.relativeTreeElements[0] && dataElem.element.contains(this.relativeTreeElements[0].element) ? "commonParent" : ""}">
+          ${this.relativeTreeElements[0] && dataElem.element === this.relativeTreeElements[0].element ? this._renderRelativeBranch(dataElem, index) : this._renderNode(dataElem, "main", index)}
         </li>
       `
     );
