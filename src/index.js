@@ -6,14 +6,16 @@ export class AdvancedSelecting extends LitElement {
       h1 { color: blue }
       ul li {
         margin: 5px;
+        max-width: 300px;
       }
-      ul li span {
+      [data-action="getElement"] {
         display: inline-block;
         border: 1px solid grey;
       }
 
       ul {
         list-style: none;
+        width: 100%;
       }
       
       #mainVisualTree > li {
@@ -33,7 +35,7 @@ export class AdvancedSelecting extends LitElement {
       #relativeVisualTree {
         position: absolute;
         left: 100px;
-        top: 40px;
+        top: 31px;
       }
     `;
   }
@@ -65,18 +67,22 @@ export class AdvancedSelecting extends LitElement {
       if (action === "getElement") {
         const index = target.dataset.index;
         const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
-        if (clearHighlight) delete tree[index].dataset.advancedSelectingHover;
-        else tree[index].dataset.advancedSelectingHover = true;
+        if (clearHighlight) delete tree[index].element.dataset.advancedSelectingHover;
+        else tree[index].element.dataset.advancedSelectingHover = true;
       }
     };
 
     this.mainVisualTree.addEventListener("mouseover", ({target}) =>
     {
-      highlightTarget(target.parentElement);
+      const actionElement = this._findClosestElement(target, ({dataset}) => dataset && dataset.action);
+      if (actionElement)
+        highlightTarget(actionElement);
     });
     this.mainVisualTree.addEventListener("mouseout", ({target}) =>
     {
-      highlightTarget(target.parentElement, true);
+      const actionElement = this._findClosestElement(target, ({dataset}) => dataset && dataset.action);
+      if (actionElement)
+        highlightTarget(actionElement, true);
     });
   }
 
@@ -133,7 +139,8 @@ export class AdvancedSelecting extends LitElement {
     this.treeElements = [];
     while (element && element !== document.documentElement)
     {
-      this.treeElements.unshift(element);
+      const elementData = {element, includeClasses: [], includeID: false};
+      this.treeElements.unshift(elementData);
       element = element.parentElement;
     }
     this.requestUpdate();
@@ -143,24 +150,36 @@ export class AdvancedSelecting extends LitElement {
     this.relativeTreeElements = [];
     while (element && element !== document.documentElement)
     {
-      this.relativeTreeElements.unshift(element);
-      if (this.treeElements.includes(element))
+      const elementData = {element, includeClasses: [], includeID: false};
+      this.relativeTreeElements.unshift(elementData);
+      if (this.treeElements.find((mainElemData) => mainElemData.element == element))
         break;
       element = element.parentElement;
     }
     this.requestUpdate();
   }
 
+  _renderClasses(classlist) {
+    return html`<div>Classes: ${Array.from(classlist).map((className) => 
+      html`
+        <label>${className}<input type="checkbox"></label>
+      `)}</div>
+    `;
+  }
+
   _renderNode(element, type = "main", index) {
     return html`
     <ul>
-      <li data-action="getElement" data-type="${type}" data-index=${index}><span>Tagname: ${element.tagName}</span></li>
+      <li data-action="getElement" data-type="${type}" data-index=${index}>
+        <span>Tagname: ${element.tagName}</span>
+        ${element.classList.length ? this._renderClasses(element.classList): ""}
+      </li>
     </ul>
     `;
   }
 
   generateQuery() {
-    return this.treeElements.reduce((acc, element) => {
+    return this.treeElements.reduce((acc, {element}) => {
       if (!acc) return element.tagName;
       return `${acc} > ${element.tagName}`
     }, "");
@@ -170,7 +189,7 @@ export class AdvancedSelecting extends LitElement {
     return html`
     ${this._renderNode(parent, "main", index)}
     <ul id="relativeVisualTree">
-      ${this.relativeTreeElements.slice(1).map((element, relativeIndex) => 
+      ${this.relativeTreeElements.slice(1).map(({element}, relativeIndex) => 
         html`
           <li>
             ${this._renderNode(element, "relative", relativeIndex)}
@@ -182,10 +201,10 @@ export class AdvancedSelecting extends LitElement {
   }
 
   _renderVisualTree() {
-    return this.treeElements.map((element, index) =>
+    return this.treeElements.map(({element}, index) =>
       html`
-        <li class="${element.contains(this.relativeTreeElements[0]) ? "commonParent" : ""}">
-          ${element === this.relativeTreeElements[0] ? this._renderRelativeBranch(element, index) : this._renderNode(element, "main", index)}
+        <li class="${this.relativeTreeElements[0] && element.contains(this.relativeTreeElements[0].element) ? "commonParent" : ""}">
+          ${this.relativeTreeElements[0] && element === this.relativeTreeElements[0].element ? this._renderRelativeBranch(element, index) : this._renderNode(element, "main", index)}
         </li>
       `
     );
