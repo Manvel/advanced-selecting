@@ -37,6 +37,11 @@ export class AdvancedSelecting extends LitElement {
         left: 100px;
         top: 31px;
       }
+
+      #query {
+        width: 300px;
+        height: 30px
+      }
     `;
   }
 
@@ -57,6 +62,7 @@ export class AdvancedSelecting extends LitElement {
     this.treeElements = [];
     this.relativeTreeElements = [];
     this.pickingType = "main";
+    this.lastQueryHighlightedValue = "";
   }
 
   firstUpdated() {
@@ -97,6 +103,19 @@ export class AdvancedSelecting extends LitElement {
             tree[index].includeClasses.push(actionElement.dataset.value);
           } else {
             tree[index].includeClasses = tree[index].includeClasses.filter((className) => className !== actionElement.dataset.value);
+          }
+          this.requestUpdate();
+        }
+        else if (action === "toggleId") {
+          const container = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.index);
+          if (!container) return;
+
+          const {index, type} = container.dataset;
+          const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
+          if (actionElement.checked) {
+            tree[index].includeID = true;
+          } else {
+            tree[index].includeID = false;
           }
           this.requestUpdate();
         }
@@ -178,7 +197,7 @@ export class AdvancedSelecting extends LitElement {
   }
 
   _renderId(id, includeID) {
-    return`<div>ID: <label>${id}<input data-action-click="toggleId" type="checkbox" ${includeID ? "checked" : ""}</label></div>`;
+    return html`<div>ID: <label>${id}<input data-action-click="toggleId" type="checkbox" ${includeID ? "checked" : ""}</label></div>`;
   }
 
   _renderClasses(classlist, classesToInclude) {
@@ -202,10 +221,23 @@ export class AdvancedSelecting extends LitElement {
   }
 
   generateQuery() {
-    return this.treeElements.reduce((acc, {element, includeClasses}) => {
+    return this.treeElements.reduce((acc, {element, includeClasses, includeID}) => {
       if (!acc) return element.tagName;
-      return `${acc} > ${element.tagName}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
+      return `${acc} > ${element.tagName}${includeID ? "#" + element.id : ""}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
     }, "");
+  }
+
+  showTargetByQuery({target}) {
+      const element = document.querySelector(target.value);
+      if (!element) return;
+      element.dataset.advancedSelectingHover = true;
+      this.lastQueryHighlightedValue = target.value;
+  }
+
+  hideTargetByQuery() {
+      if (this.lastQueryHighlightedValue) {
+        delete document.querySelector(this.lastQueryHighlightedValue).dataset.advancedSelectingHover;
+      }
   }
 
   _renderRelativeBranch(parentDataElem, index) {
@@ -238,7 +270,7 @@ export class AdvancedSelecting extends LitElement {
       <h1>${this.header}!</h1>
       <button @click="${this.startPicking}" data-pick-type="main">Pick element</button>
       <button @click="${this.startPicking}" data-pick-type="relative">Pick relative element</button>
-      <span id="query">${this.generateQuery()}</span>
+      <input id="query" type="text" value="${this.generateQuery()}" @mouseover="${this.showTargetByQuery}" @mouseout="${this.hideTargetByQuery}">
       <ul id="mainVisualTree">
         ${this._renderVisualTree()}
       </ul>
