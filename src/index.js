@@ -221,9 +221,20 @@ export class AdvancedSelecting extends LitElement {
   }
 
   generateQuery() {
+    const getNthType = (element) => {
+      const tagName = element.tagName.toLowerCase();
+      let numberOfTypes = 0;
+      while (element = element.previousElementSibling) {
+        if (element.tagName.toLowerCase() == tagName)
+          numberOfTypes++;
+      }
+      if (numberOfTypes)
+        return `:nth-of-type(${numberOfTypes + 1})`
+      return ""
+    }
     return this.treeElements.reduce((acc, {element, includeClasses, includeID}) => {
       if (!acc) return element.tagName;
-      return `${acc} > ${element.tagName}${includeID ? "#" + element.id : ""}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
+      return `${acc} ${element.tagName}${getNthType(element)}${includeID ? "#" + element.id : ""}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
     }, "");
   }
 
