@@ -67,7 +67,7 @@ export class AdvancedSelecting extends LitElement {
     this.pickingType = "main";
     this.lastQueryHighlightedValue = "";
     this.useXpath = false;
-    this._whitelistedAttributes = ["class", "id"];
+    this._whitelistedAttributes = ["class", "id", "href"];
   }
 
   firstUpdated() {
@@ -264,7 +264,7 @@ export class AdvancedSelecting extends LitElement {
       }
       if (numberOfTypes) {
         if (this.useXpath) {
-          return `['${numberOfTypes + 1}']`
+          return `[${numberOfTypes + 1}]`
         } else {
           return `:nth-of-type(${numberOfTypes + 1})`
         }
@@ -288,6 +288,8 @@ export class AdvancedSelecting extends LitElement {
             selector += `.${attributes[attributeName].join(".")}`;
           } else if (attributeName === "id") {
             selector += `#${attributes[attributeName]}`;
+          } else {
+            selector += `[${attributeName}='${attributes[attributeName]}']`;
           }
         }
         return selector;
