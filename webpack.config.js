@@ -8,6 +8,9 @@ module.exports = {
     path: path.resolve(__dirname, "dist"),
     filename: "advanced-selecting.js",
   },
+  optimization: {
+    minimize: false
+  },
   plugins: [
     new CopyPlugin({
       patterns: [

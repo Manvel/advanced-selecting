@@ -67,6 +67,7 @@ export class AdvancedSelecting extends LitElement {
     this.pickingType = "main";
     this.lastQueryHighlightedValue = "";
     this.useXpath = false;
+    this._whitelistedAttributes = ["class", "id"];
   }
 
   firstUpdated() {
@@ -110,25 +111,8 @@ export class AdvancedSelecting extends LitElement {
       if (!container || !action) return null;
 
       switch (action) {
-        case "toggleClass":
-          const treeElement = this._findTreeElementByDomElement(container);
-          if (actionElement.checked) {
-            treeElement.includeClasses.push(actionElement.dataset.value);
-          } else {
-            treeElement.includeClasses = treeElement.includeClasses.filter((className) => className !== actionElement.dataset.value);
-          }
-          this.requestUpdate();
-          break;
-        case "toggleId":
-          const treeElement = this._findTreeElementByDomElement(container);
-          if (actionElement.checked) {
-            treeElement.includeID = true;
-          } else {
-            treeElement.includeID = false;
-          }
-          this.requestUpdate();
-          break;
         case "toggleAttribute":
+          const treeElement = this._findTreeElementByDomElement(container);
           const attributeName = actionElement.dataset.attrName;
           const attributeValue = actionElement.dataset.attrValue;
           const shouldInclude = actionElement.checked;
@@ -140,8 +124,9 @@ export class AdvancedSelecting extends LitElement {
             }
           }
           else {
-            treeElement.attributes[attributeName] = treeElement.attributes[attributeName].fliter((value) => attributeValue !== value);
+            treeElement.attributes[attributeName] = treeElement.attributes[attributeName].filter((value) => attributeValue !== value);
           }
+          this.requestUpdate();
           break;
       }
     }
@@ -200,7 +185,7 @@ export class AdvancedSelecting extends LitElement {
     this.treeElements = [];
     while (element && element !== document.documentElement)
     {
-      const elementData = {element, includeClasses: [], includeID: false};
+      const elementData = {element, attributes: {}};
       this.treeElements.unshift(elementData);
       element = element.parentElement;
     }
@@ -211,7 +196,7 @@ export class AdvancedSelecting extends LitElement {
     this.relativeTreeElements = [];
     while (element && element !== document.documentElement)
     {
-      const elementData = {element, includeClasses: [], includeID: false};
+      const elementData = {element, attributes: {}};
       this.relativeTreeElements.unshift(elementData);
       if (this.treeElements.find((mainElemData) => mainElemData.element == element))
         break;
@@ -224,7 +209,7 @@ export class AdvancedSelecting extends LitElement {
     return html`<div>ID: <label>${id}<input data-action-click="toggleId" type="checkbox" ${includeID ? "checked" : ""}</label></div>`;
   }
 
-  _renderClasses(classlist, classesToInclude) {
+  _renderClasses(classlist) {
     return html`<div>Classes: ${Array.from(classlist).map((className) => 
       html`
         <label>${className}<input data-action-click="toggleClass" type="checkbox" data-value="${className}"></label>
@@ -232,13 +217,38 @@ export class AdvancedSelecting extends LitElement {
     `;
   }
 
-  _renderNode({element, includeClasses, includeID}, type = "main", index) {
+  _renderAttributes(element) {
+    const attributeTemplates = [];
+    for (const name of element.getAttributeNames()) {
+      if (!this._whitelistedAttributes.includes(name)) continue;
+      const value = element.getAttribute(name);
+      if (name === "class") {
+        const template = html`<div>Classes: 
+          ${Array.from(element.classList).map((classNameValue) => {
+            return html`
+              <label>${classNameValue}<input data-action-click="toggleAttribute" type="checkbox" data-attr-name="${name}" data-attr-value="${classNameValue}"></label>
+            `;
+          })}
+        </div>`;
+        attributeTemplates.push(template);
+      } else {
+        const template = html`
+        <div>${name}: 
+          <label>${value}<input data-action-click="toggleAttribute" type="checkbox" data-attr-name="${name}" data-attr-value="${value}"></label>
+        </div>`;
+        attributeTemplates.push(template);
+      }
+      
+    }
+    return attributeTemplates;
+  }
+
+  _renderNode({element}, type = "main", index) {
     return html`
     <ul>
       <li data-action-hover="getElement" data-type="${type}" data-index=${index}>
         <span>Tagname: ${element.tagName}</span>
-        ${element.classList.length ? this._renderClasses(element.classList, includeClasses): ""}
-        ${element.id ? this._renderId(element.id, includeID) : ""}
+        ${this._renderAttributes(element)}
       </li>
     </ul>
     `;
@@ -262,12 +272,25 @@ export class AdvancedSelecting extends LitElement {
       return ""
     }
 
+    const createAttributeSelector = (attributes) => {
+      let selector = "";
+      for (const attributeName in attributes) {
+        if (attributeName === "class" && attributes[attributeName].length) {
+          selector += `.${attributes[attributeName].join(".")}`;
+        } else if (attributeName === "id") {
+          selector += `#${attributes[attributeName]}`;
+        }
+      }
+      return selector;
+    }
+
     const delimiter = this.useXpath ? "/" : " ";
     const prefix = this.useXpath ? "//" : "";
 
-    const query = this.treeElements.reduce((acc, {element, includeClasses, includeID}) => {
+    const query = this.treeElements.reduce((acc, treeElement) => {
+      const element = treeElement.element;
       if (!acc) return element.tagName;
-      return `${acc}${delimiter}${element.tagName}${getNthType(element)}${includeID ? "#" + element.id : ""}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
+      return `${acc}${delimiter}${element.tagName}${getNthType(element)}${createAttributeSelector(treeElement.attributes)}`
     }, "");
 
     return `${prefix}${query}`;
