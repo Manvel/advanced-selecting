@@ -363,7 +363,9 @@ export class AdvancedSelecting extends LitElement {
     return html`
       <h1>${this.header}!</h1>
       <button @click="${this.startPicking}" data-pick-type="main">Pick element</button>
-      <button @click="${this.startPicking}" data-pick-type="relative">Pick relative element</button>
+      ${this.useXpath && this.treeElements.length ?
+        html`<button @click="${this.startPicking}" data-pick-type="relative">Pick relative element</button>` : ""
+      }
       <input id="query" type="text" value="${this.generateQuery()}" @mouseover="${this.showTargetByQuery}" @mouseout="${this.hideTargetByQuery}">
       <label>Use XPath<input type="checkbox" @click="${() => this.useXpath = !this.useXpath}"></label>
       <ul id="mainVisualTree">
