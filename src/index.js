@@ -92,39 +92,59 @@ export class AdvancedSelecting extends LitElement {
         highlightTarget(actionElement, true);
     });
 
-    this.mainVisualTree.addEventListener("click", (event) => {
-      const actionElement = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.actionClick);
-      if (actionElement) {
-        const action = actionElement.dataset.actionClick;
+    this.mainVisualTree.addEventListener("click", this._visualTreeClickHandler.bind(this));
+  }
 
-        if (action === "toggleClass") {
-          const container = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.index);
-          if (!container) return;
+  _findTreeElementByDomElement({dataset}) {
+    if (!dataset) return null;
+    const {index, type} = dataset;
+    const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
+    return tree[index];
+  }
 
-          const {index, type} = container.dataset;
-          const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
+  _visualTreeClickHandler(event) {
+    const actionElement = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.actionClick);
+    if (actionElement) {
+      const action = actionElement.dataset.actionClick;
+      const container = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.index);
+      if (!container || !action) return null;
+
+      switch (action) {
+        case "toggleClass":
+          const treeElement = this._findTreeElementByDomElement(container);
           if (actionElement.checked) {
-            tree[index].includeClasses.push(actionElement.dataset.value);
+            treeElement.includeClasses.push(actionElement.dataset.value);
           } else {
-            tree[index].includeClasses = tree[index].includeClasses.filter((className) => className !== actionElement.dataset.value);
+            treeElement.includeClasses = treeElement.includeClasses.filter((className) => className !== actionElement.dataset.value);
           }
           this.requestUpdate();
-        }
-        else if (action === "toggleId") {
-          const container = this._findClosestElement(event.target, ({dataset}) => dataset && dataset.index);
-          if (!container) return;
-
-          const {index, type} = container.dataset;
-          const tree = type === "main" ? this.treeElements : this.relativeTreeElements.slice(1);
+          break;
+        case "toggleId":
+          const treeElement = this._findTreeElementByDomElement(container);
           if (actionElement.checked) {
-            tree[index].includeID = true;
+            treeElement.includeID = true;
           } else {
-            tree[index].includeID = false;
+            treeElement.includeID = false;
           }
           this.requestUpdate();
-        }
+          break;
+        case "toggleAttribute":
+          const attributeName = actionElement.dataset.attrName;
+          const attributeValue = actionElement.dataset.attrValue;
+          const shouldInclude = actionElement.checked;
+          if (shouldInclude) {
+            if (treeElement.attributes[attributeName]) {
+              treeElement.attributes[attributeName].push(attributeValue);
+            } else {
+              treeElement.attributes[attributeName] = [attributeValue]
+            }
+          }
+          else {
+            treeElement.attributes[attributeName] = treeElement.attributes[attributeName].fliter((value) => attributeValue !== value);
+          }
+          break;
       }
-    });
+    }
   }
 
   onDOMElementHover({target}) {
@@ -265,14 +285,15 @@ export class AdvancedSelecting extends LitElement {
 
   showTargetByQuery({target}) {
     const element = this.useXpath ? this._getElementByXPath(target.value) : document.querySelector(target.value);
+    this.lastQueryHighlightedValue = target.value;
     if (!element) return;
     element.dataset.advancedSelectingHover = true;
-    this.lastQueryHighlightedValue = target.value;
   }
 
   hideTargetByQuery() {
       if (this.lastQueryHighlightedValue) {
         const element = this.useXpath ? this._getElementByXPath(this.lastQueryHighlightedValue) : document.querySelector(this.lastQueryHighlightedValue);
+        if (!element) return;
         delete element.dataset.advancedSelectingHover;
       }
   }
