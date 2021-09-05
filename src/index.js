@@ -273,15 +273,26 @@ export class AdvancedSelecting extends LitElement {
     }
 
     const createAttributeSelector = (attributes) => {
-      let selector = "";
-      for (const attributeName in attributes) {
-        if (attributeName === "class" && attributes[attributeName].length) {
-          selector += `.${attributes[attributeName].join(".")}`;
-        } else if (attributeName === "id") {
-          selector += `#${attributes[attributeName]}`;
+      if (this.useXpath && Object.keys(attributes).length) {
+        const selector = `[${
+          Object.keys(attributes).reduce((acc, attributeName, index) => {
+            if (index) acc += " and ";
+            return acc += (attributes[attributeName].map((value) => `contains(@${attributeName}, '${value}')`).join(" and "));
+          }, "")
+        }]`;
+        return selector;
+      } else {
+        let selector = "";
+        for (const attributeName in attributes) {
+          if (attributeName === "class" && attributes[attributeName].length) {
+            selector += `.${attributes[attributeName].join(".")}`;
+          } else if (attributeName === "id") {
+            selector += `#${attributes[attributeName]}`;
+          }
         }
+        return selector;
       }
-      return selector;
+      
     }
 
     const delimiter = this.useXpath ? "/" : " ";
