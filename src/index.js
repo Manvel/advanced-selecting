@@ -52,6 +52,9 @@ export class AdvancedSelecting extends LitElement {
       },
       treeElements: {
         type: Array
+      },
+      useXpath: {
+        type: Boolean
       }
     }
   }
@@ -63,6 +66,7 @@ export class AdvancedSelecting extends LitElement {
     this.relativeTreeElements = [];
     this.pickingType = "main";
     this.lastQueryHighlightedValue = "";
+    this.useXpath = false;
   }
 
   firstUpdated() {
@@ -228,26 +232,48 @@ export class AdvancedSelecting extends LitElement {
         if (element.tagName.toLowerCase() == tagName)
           numberOfTypes++;
       }
-      if (numberOfTypes)
-        return `:nth-of-type(${numberOfTypes + 1})`
+      if (numberOfTypes) {
+        if (this.useXpath) {
+          return `['${numberOfTypes + 1}']`
+        } else {
+          return `:nth-of-type(${numberOfTypes + 1})`
+        }
+      }
       return ""
     }
-    return this.treeElements.reduce((acc, {element, includeClasses, includeID}) => {
+
+    const delimiter = this.useXpath ? "/" : " ";
+    const prefix = this.useXpath ? "//" : "";
+
+    const query = this.treeElements.reduce((acc, {element, includeClasses, includeID}) => {
       if (!acc) return element.tagName;
-      return `${acc} ${element.tagName}${getNthType(element)}${includeID ? "#" + element.id : ""}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
+      return `${acc}${delimiter}${element.tagName}${getNthType(element)}${includeID ? "#" + element.id : ""}${includeClasses.length ? "." + includeClasses.join(".") : ""}`
     }, "");
+
+    return `${prefix}${query}`;
+  }
+
+  _getElementByXPath(xpathExpression) {
+    return document.evaluate(
+      xpathExpression,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    ).singleNodeValue;
   }
 
   showTargetByQuery({target}) {
-      const element = document.querySelector(target.value);
-      if (!element) return;
-      element.dataset.advancedSelectingHover = true;
-      this.lastQueryHighlightedValue = target.value;
+    const element = this.useXpath ? this._getElementByXPath(target.value) : document.querySelector(target.value);
+    if (!element) return;
+    element.dataset.advancedSelectingHover = true;
+    this.lastQueryHighlightedValue = target.value;
   }
 
   hideTargetByQuery() {
       if (this.lastQueryHighlightedValue) {
-        delete document.querySelector(this.lastQueryHighlightedValue).dataset.advancedSelectingHover;
+        const element = this.useXpath ? this._getElementByXPath(this.lastQueryHighlightedValue) : document.querySelector(this.lastQueryHighlightedValue);
+        delete element.dataset.advancedSelectingHover;
       }
   }
 
@@ -282,6 +308,7 @@ export class AdvancedSelecting extends LitElement {
       <button @click="${this.startPicking}" data-pick-type="main">Pick element</button>
       <button @click="${this.startPicking}" data-pick-type="relative">Pick relative element</button>
       <input id="query" type="text" value="${this.generateQuery()}" @mouseover="${this.showTargetByQuery}" @mouseout="${this.hideTargetByQuery}">
+      <label>Use XPath<input type="checkbox" @click="${() => this.useXpath = !this.useXpath}"></label>
       <ul id="mainVisualTree">
         ${this._renderVisualTree()}
       </ul>
