@@ -297,14 +297,30 @@ export class AdvancedSelecting extends LitElement {
       
     }
 
+    const generateQueryFromTree = (tree) => {
+      return tree.reduce((acc, treeElement) => {
+        const element = treeElement.element;
+        if (!acc) return element.tagName;
+        return `${acc}${delimiter}${element.tagName}${getNthType(element)}${createAttributeSelector(treeElement.attributes)}`
+      }, "");
+    }
+
+    const generateAncestorQuery = (fromElement, toElement) => {
+      // TODO calculate until common parent.
+    };
+
     const delimiter = this.useXpath ? "/" : " ";
     const prefix = this.useXpath ? "//" : "";
+    const hasRelativeElement = this.relativeTreeElements.length;
 
-    const query = this.treeElements.reduce((acc, treeElement) => {
-      const element = treeElement.element;
-      if (!acc) return element.tagName;
-      return `${acc}${delimiter}${element.tagName}${getNthType(element)}${createAttributeSelector(treeElement.attributes)}`
-    }, "");
+    let query = "";
+    if (hasRelativeElement) {
+      const commonParent = this.relativeTreeElements[0];
+      const treeTillCommonParent = this.treeElements.slice(0, this.treeElements.findIndex(({element}) => element === commonParent.element));
+      query = generateQueryFromTree([...treeTillCommonParent, ...this.relativeTreeElements]);
+    } else {
+      query = generateQueryFromTree(this.treeElements);
+    }
 
     return `${prefix}${query}`;
   }
