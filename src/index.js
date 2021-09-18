@@ -306,7 +306,12 @@ export class AdvancedSelecting extends LitElement {
     }
 
     const generateAncestorQuery = (fromElement, toElement) => {
-      // TODO calculate until common parent.
+      let result = "";
+      while (fromElement = fromElement.parentElement) {
+        if (fromElement === toElement) break;
+        result += `/ancestor::${fromElement.tagName}`;
+      }
+      return result;
     };
 
     const delimiter = this.useXpath ? "/" : " ";
@@ -316,8 +321,12 @@ export class AdvancedSelecting extends LitElement {
     let query = "";
     if (hasRelativeElement) {
       const commonParent = this.relativeTreeElements[0];
-      const treeTillCommonParent = this.treeElements.slice(0, this.treeElements.findIndex(({element}) => element === commonParent.element));
+      const indexOfCommonParent = this.treeElements.findIndex(({element}) => element === commonParent.element);
+      const treeTillCommonParent = this.treeElements.slice(0, indexOfCommonParent);
+      const treeAfterCommonParent = this.treeElements.slice(indexOfCommonParent + 1);
       query = generateQueryFromTree([...treeTillCommonParent, ...this.relativeTreeElements]);
+      query += generateAncestorQuery(this.relativeTreeElements.slice(-1)[0].element, treeTillCommonParent.slice(-1)[0].element);
+      query += "/" + generateQueryFromTree(treeAfterCommonParent);
     } else {
       query = generateQueryFromTree(this.treeElements);
     }
